@@ -24,18 +24,28 @@ Work is autosaved in the browser. Use **Save** / **Open…** to keep `.pyrin.jso
 
 ## Shortcuts
 
+Press `?` in the editor for the full list. Hovering a button shows its shortcut.
+
 | Key | Action |
 |---|---|
-| `B` / `E` | Brush / eraser |
+| `B` / `E` / `X` | Brush / eraser / switch between them |
 | `[` / `]` | Brush size |
 | `O` | Toggle onion skin |
 | `Space` | Play / pause |
-| `←` / `→` | Previous / next frame |
-| `N` | New drawing on this frame |
-| `H` | Hold previous drawing on this frame |
-| `Delete` | Clear cell |
+| `←` / `→` (or `,` / `.`) | Previous / next frame |
+| `Shift+←` / `Shift+→` | Previous / next drawing |
+| `Home` / `End` | First / last frame |
+| `N` / `H` / `Delete` | New drawing / hold / clear cell |
 | `+` / `-` | Insert / delete frame |
+| `1` / `2` / `3` | Shoot layer on 1s / 2s / 3s |
+| `Shift+N` | New layer |
+| `↑` / `↓` | Select layer above / below |
+| `Alt+↑` / `Alt+↓` | Move layer up / down |
+| `V` | Show / hide layer |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
+| `Ctrl+S` / `Ctrl+O` | Save / open |
+
+Shortcuts match physical key positions, so they keep working with a Thai keyboard layout. All shortcuts are defined in [`src/app/commands.ts`](src/app/commands.ts).
 
 ## Rendering and performance
 

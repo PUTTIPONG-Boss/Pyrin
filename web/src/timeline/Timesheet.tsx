@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import { getLayer, moveLayer, removeLayer, setLength } from "../model/cut";
 import { useEditor } from "../model/store";
 import type { Layer } from "../model/types";
-import { actions } from "./actions";
+import { runCommand, tip } from "../app/commands";
 
 export function Timesheet() {
   const cut = useEditor((s) => s.cut);
@@ -24,17 +24,21 @@ export function Timesheet() {
   return (
     <section className="timesheet">
       <div className="timesheet-bar">
-        <button onClick={actions.addLayer}>+ Layer</button>
+        <button onClick={() => runCommand("layer.add")} {...tip("layer.add")}>+ Layer</button>
         <span className="sep" />
-        <button onClick={actions.newDrawing} title="New drawing on this frame (N)">New drawing</button>
-        <button onClick={actions.hold} title="Hold previous drawing (H)">Hold</button>
-        <button onClick={actions.clear} title="Clear cell (Delete)">Clear</button>
-        <button onClick={actions.insertFrame} title="Insert frame (+)">+ Frame</button>
-        <button onClick={actions.deleteFrame} title="Delete frame (-)">− Frame</button>
+        <button onClick={() => runCommand("cell.new")} {...tip("cell.new")}>New drawing</button>
+        <button onClick={() => runCommand("cell.hold")} {...tip("cell.hold")}>Hold</button>
+        <button onClick={() => runCommand("cell.clear")} {...tip("cell.clear")}>Clear</button>
+        <button onClick={() => runCommand("frame.insert")} {...tip("frame.insert")}>+ Frame</button>
+        <button onClick={() => runCommand("frame.delete")} {...tip("frame.delete")}>− Frame</button>
         <span className="sep" />
         <span className="label">Shoot layer on</span>
         {[1, 2, 3].map((n) => (
-          <button key={n} onClick={() => actions.retime(n)} title={`Hold every drawing for ${n} frame(s)`}>
+          <button
+            key={n}
+            onClick={() => runCommand(`retime.${n}`)}
+            {...tip(`retime.${n}`, `Hold every drawing for ${n} frame${n > 1 ? "s" : ""}`)}
+          >
             {n}s
           </button>
         ))}
@@ -106,7 +110,7 @@ const LayerRow = memo(function LayerRow({
       <div className={`layer-head${active ? " active" : ""}`} onClick={() => setActiveLayer(layer.id)}>
         <button
           className="icon"
-          title={layer.visible ? "Hide layer" : "Show layer"}
+          {...(active ? tip("layer.visibility", layer.visible ? "Hide layer" : "Show layer") : { "data-tip": layer.visible ? "Hide layer" : "Show layer" })}
           onClick={(e) => {
             e.stopPropagation();
             update((l) => void (l.visible = !l.visible));
@@ -119,11 +123,23 @@ const LayerRow = memo(function LayerRow({
           value={layer.name}
           onChange={(e) => update((l) => void (l.name = e.target.value))}
         />
-        <button className="icon" title="Move up" onClick={() => edit((c) => moveLayer(c, layer.id, 1))}>▲</button>
-        <button className="icon" title="Move down" onClick={() => edit((c) => moveLayer(c, layer.id, -1))}>▼</button>
         <button
           className="icon"
-          title="Delete layer"
+          {...(active ? tip("layer.moveUp") : { "data-tip": "Move layer up" })}
+          onClick={() => edit((c) => moveLayer(c, layer.id, 1))}
+        >
+          ▲
+        </button>
+        <button
+          className="icon"
+          {...(active ? tip("layer.moveDown") : { "data-tip": "Move layer down" })}
+          onClick={() => edit((c) => moveLayer(c, layer.id, -1))}
+        >
+          ▼
+        </button>
+        <button
+          className="icon"
+          data-tip="Delete layer"
           disabled={layerCount <= 1}
           onClick={(e) => {
             e.stopPropagation();

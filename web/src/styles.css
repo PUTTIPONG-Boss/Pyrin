@@ -207,3 +207,69 @@ input[type="number"] {
   background: var(--c);
   opacity: 0.7;
 }
+
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: #111214;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.keys { display: inline-flex; align-items: center; gap: 3px; }
+kbd {
+  min-width: 20px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: 11px/16px ui-monospace, "Cascadia Mono", Consolas, monospace;
+  text-align: center;
+}
+.help-button { width: 28px; padding: 4px 0; font-weight: 600; }
+
+/* Shortcut sheet */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.5);
+}
+.sheet {
+  width: min(880px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 16px 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5);
+}
+.sheet header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sheet h2 { margin: 0; font-size: 16px; }
+.sheet h3 { margin: 12px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.sheet-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); column-gap: 28px; }
+.sheet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.04);
+}
+.sheet-row .combo { display: inline-flex; align-items: center; gap: 3px; }
+.sheet-row .or { margin: 0 4px; color: var(--muted); font-size: 11px; }
+.sheet footer { margin-top: 12px; font-size: 12px; }

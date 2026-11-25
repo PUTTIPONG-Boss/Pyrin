@@ -1,34 +1,23 @@
 import { useEffect } from "react";
-import { useEditor } from "../model/store";
-import { actions } from "../timeline/actions";
+import { commandForCombo, isHelpOpen, toggleHelp } from "./commands";
+import { comboFromEvent } from "./keys";
 
 export function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.matches("input:not([type=range]):not([type=color]), textarea")) return;
-      const s = useEditor.getState();
-      const mod = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
-
-      if (mod && key === "z") s[e.shiftKey ? "redo" : "undo"]();
-      else if (mod && key === "y") s.redo();
-      else if (mod) return;
-      else if (key === " ") s.setPlaying(!s.playing);
-      else if (key === "arrowleft") s.stepFrame(-1);
-      else if (key === "arrowright") s.stepFrame(1);
-      else if (key === "b") s.setTool("brush");
-      else if (key === "e") s.setTool("eraser");
-      else if (key === "o") s.toggleOnion();
-      else if (key === "[") s.setSize(s.size - 1);
-      else if (key === "]") s.setSize(s.size + 1);
-      else if (key === "n") actions.newDrawing();
-      else if (key === "h") actions.hold();
-      else if (key === "delete" || key === "backspace") actions.clear();
-      else if (key === "+" || key === "=") actions.insertFrame();
-      else if (key === "-") actions.deleteFrame();
-      else return;
+      // Let text fields keep their keys (but not sliders or colour pickers).
+      if (target.matches("input:not([type=range]):not([type=color]), textarea, [contenteditable]")) return;
+      if (e.code === "Escape" && isHelpOpen()) {
+        toggleHelp(false);
+        return;
+      }
+      const command = commandForCombo(comboFromEvent(e));
+      if (!command) return;
       e.preventDefault();
+      // A focused button would also react to Space/Enter; shortcuts win.
+      if (target instanceof HTMLButtonElement) target.blur();
+      command.run();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

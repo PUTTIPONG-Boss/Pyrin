@@ -4,7 +4,9 @@ import { saveAutosave } from "../model/io";
 import { useEditor } from "../model/store";
 import { Timesheet } from "../timeline/Timesheet";
 import { usePlayback } from "../timeline/usePlayback";
+import { ShortcutSheet } from "./ShortcutSheet";
 import { Toolbar } from "./Toolbar";
+import { TooltipLayer } from "./Tooltip";
 import { useShortcuts } from "./useShortcuts";
 
 export function App() {
@@ -35,6 +37,8 @@ export function App() {
       <Toolbar />
       <Stage />
       <Timesheet />
+      <TooltipLayer />
+      <ShortcutSheet />
     </div>
   );
 }

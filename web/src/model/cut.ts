@@ -112,6 +112,15 @@ export function retime(cut: Cut, layerId: string, n: number): void {
   layer.exposure = Array.from({ length: cut.length }, (_, f) => seq[Math.floor(f / n)] ?? null);
 }
 
+/** Frames where a new drawing begins (the start of each exposure run). */
+export function drawingStarts(layer: Layer): number[] {
+  const starts: number[] = [];
+  layer.exposure.forEach((id, f) => {
+    if (id && id !== layer.exposure[f - 1]) starts.push(f);
+  });
+  return starts;
+}
+
 /**
  * Up to `count` distinct drawings before (`dir = -1`) or after (`dir = 1`) the one on `frame`,
  * nearest first. Used for onion skin.
