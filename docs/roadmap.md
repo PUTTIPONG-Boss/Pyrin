@@ -13,13 +13,14 @@ Goal: learn which inbetween models suit the target style before writing pipeline
 
 Goal: an editor good enough to animate by hand. If this works, the data model is right.
 
-- [ ] Project / Cut / Layer / Drawing model with undo and redo
-- [ ] Pressure-sensitive brush and eraser (vector strokes)
-- [ ] Multiple layers (cels) with visibility and opacity
-- [ ] Onion skin (previous / next drawings)
-- [ ] X-sheet: edit exposure per layer, holds, on 1s / 2s / 3s
-- [ ] Playback at 24 fps honouring exposure
-- [ ] Save and load projects as JSON
+- [x] Project / Cut / Layer / Drawing model with undo and redo
+- [x] Pressure-sensitive brush and eraser (vector strokes)
+- [x] Multiple layers (cels) with visibility and ordering
+- [x] Onion skin (previous / next drawings)
+- [x] X-sheet: edit exposure per layer, holds, on 1s / 2s / 3s
+- [x] Playback at 24 fps honouring exposure
+- [x] Save and load projects as JSON (plus browser autosave)
+- [ ] Layer opacity (moved to later)
 
 ## Phase 2: AI inbetweening
 

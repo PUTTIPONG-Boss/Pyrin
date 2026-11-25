@@ -1,14 +1,48 @@
 # Pyrin Editor
 
-The web-based animation editor: canvas, layers, onion skin, X-sheet timeline and playback.
+The web-based animation editor: canvas, layers, onion skin, timesheet and playback.
 
-**Stack:** TypeScript, React, Vite, Zustand + Immer, PixiJS, perfect-freehand
+**Stack:** TypeScript, React, Vite, Zustand + Immer, Canvas 2D, perfect-freehand, Vitest
+
+## Run
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm test           # unit tests for the timesheet model
+npm run build      # type-check and production build
+```
+
+## Concepts
+
+- **Drawing:** one sheet, named by layer letter and number (`A1`, `A2`, ...).
+- **Exposure (timesheet):** each layer lists which drawing is shown on each frame. A drawing exposed on several frames is a *hold*; drawing on any of those frames edits the same sheet.
+- **Shoot on 1s / 2s / 3s:** re-times the active layer so each drawing is held for that many frames.
+- **Onion skin:** previous drawings in red, next drawings in green (two each, fading with distance).
+
+Work is autosaved in the browser. Use **Save** / **Open…** to keep `.pyrin.json` project files.
+
+## Shortcuts
+
+| Key | Action |
+|---|---|
+| `B` / `E` | Brush / eraser |
+| `[` / `]` | Brush size |
+| `O` | Toggle onion skin |
+| `Space` | Play / pause |
+| `←` / `→` | Previous / next frame |
+| `N` | New drawing on this frame |
+| `H` | Hold previous drawing on this frame |
+| `Delete` | Clear cell |
+| `+` / `-` | Insert / delete frame |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
+
+## Layout
 
 | Folder | Purpose |
 |---|---|
-| `src/model/` | Core data model: Cut, Layer, Drawing, exposure |
-| `src/canvas/` | Drawing tools, onion skin, rendering |
-| `src/timeline/` | X-sheet / timesheet UI and playback |
-| `src/api/` | Client for the inference server |
-
-Not scaffolded yet. See the [roadmap](../docs/roadmap.md), Phase 1.
+| `src/model/` | Data model, timesheet operations, store with undo, project files |
+| `src/canvas/` | Stroke rendering, onion skin, drawing surface |
+| `src/timeline/` | Timesheet UI, timesheet commands, playback |
+| `src/app/` | App shell, toolbar, keyboard shortcuts |
+| `src/api/` | Client for the inference server (Phase 2) |

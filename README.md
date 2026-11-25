@@ -101,7 +101,7 @@ interface Cut {
 ┌────────────────────────────────┐          ┌──────────────────────────────────┐
 │  Editor  (web/)                │  HTTP    │  Inference server  (server/)     │
 │  TypeScript · React · Vite     │◄────────►│  Python · FastAPI                │
-│  PixiJS canvas · Zustand       │  WS      │  Spacing / exposure pipeline     │
+│  Canvas 2D · Zustand           │  WS      │  Spacing / exposure pipeline     │
 │  X-sheet timeline · playback   │          │  Post-processing (OpenCV)        │
 └────────────────────────────────┘          └───────────────┬──────────────────┘
                                                             │ provider interface
@@ -117,7 +117,7 @@ The server talks to models through a **provider interface**, so a hosted API can
 
 | Area | Choice |
 |---|---|
-| Editor | TypeScript, React, Vite, Zustand + Immer, PixiJS, perfect-freehand |
+| Editor | TypeScript, React, Vite, Zustand + Immer, Canvas 2D, perfect-freehand |
 | Server | Python 3.11, FastAPI, WebSockets, NumPy, OpenCV, scikit-image |
 | Inference (hosted) | Replicate, fal.ai |
 | Inference (self-hosted) | ComfyUI (headless), PyTorch, diffusers |
@@ -164,7 +164,7 @@ Pyrin/
 
 ## Getting Started
 
-> Pyrin is at an early prototype stage. The commands below describe the intended setup and will become runnable as each part lands.
+> Pyrin is at an early prototype stage. The editor runs today; the server arrives in Phase 2.
 
 ### Prerequisites
 
@@ -203,7 +203,7 @@ uvicorn app.main:app --reload
 ## Roadmap
 
 - [ ] **Phase 0: Model exploration.** Evaluate inbetween models on real key pairs through ComfyUI and hosted APIs.
-- [ ] **Phase 1: Editor without AI.** Canvas, layers, onion skin, X-sheet editing, 24 fps playback with correct holds.
+- [x] **Phase 1: Editor without AI.** Canvas, layers, onion skin, X-sheet editing, 24 fps playback with correct holds.
 - [ ] **Phase 2: AI inbetweening.** Key A/B → model → spacing → exposure, inserted as editable inbetween drawings.
 - [ ] **Phase 3: Clean-up and colour.** Palette lock, line re-extraction, flat colour fill.
 - [ ] **Phase 4: Storyboard and prompt modes.** High-level creation for non-animators.
