@@ -12,6 +12,7 @@ export function App() {
   useShortcuts();
 
   useEffect(() => {
+    // Save when the browser is idle so it never competes with drawing.
     let timer = 0;
     const flush = () => {
       clearTimeout(timer);
@@ -20,7 +21,7 @@ export function App() {
     const unsubscribe = useEditor.subscribe((s, prev) => {
       if (s.cut === prev.cut) return;
       clearTimeout(timer);
-      timer = window.setTimeout(flush, 500);
+      timer = window.setTimeout(() => requestIdleCallback(flush, { timeout: 2000 }), 300);
     });
     window.addEventListener("pagehide", flush);
     return () => {

@@ -1,7 +1,6 @@
 import { create } from "zustand";
-import { produce } from "immer";
+import { freeze, produce } from "immer";
 import { createCut } from "./cut";
-import { loadAutosave } from "./io";
 import type { Cut } from "./types";
 
 export type Tool = "brush" | "eraser";
@@ -37,7 +36,17 @@ interface EditorState {
   setPlaying: (playing: boolean) => void;
 }
 
-const initialCut = loadAutosave() ?? createCut();
+const initialCut = freeze(createCut(), true);
+
+/** Keeps the playhead and active layer valid after the cut changes. */
+function fixups(cut: Cut, frame: number, activeLayerId: string) {
+  return {
+    frame: Math.min(Math.max(0, frame), cut.length - 1),
+    activeLayerId: cut.layers.some((l) => l.id === activeLayerId)
+      ? activeLayerId
+      : cut.layers[cut.layers.length - 1].id,
+  };
+}
 
 export const useEditor = create<EditorState>((set, get) => ({
   cut: initialCut,
@@ -53,33 +62,35 @@ export const useEditor = create<EditorState>((set, get) => ({
   playing: false,
 
   edit: (recipe) => {
-    const { cut, past } = get();
+    const { cut, past, frame, activeLayerId } = get();
     const next = produce(cut, recipe);
     if (next === cut) return;
-    set({ cut: next, past: [...past, cut].slice(-HISTORY_LIMIT), future: [] });
-    get().setFrame(get().frame); // keep the playhead inside the cut
-    ensureActiveLayer();
+    set({
+      cut: next,
+      past: [...past, cut].slice(-HISTORY_LIMIT),
+      future: [],
+      ...fixups(next, frame, activeLayerId),
+    });
   },
 
   undo: () => {
-    const { cut, past, future } = get();
+    const { cut, past, future, frame, activeLayerId } = get();
     if (!past.length) return;
-    set({ cut: past[past.length - 1], past: past.slice(0, -1), future: [cut, ...future] });
-    get().setFrame(get().frame);
-    ensureActiveLayer();
+    const prev = past[past.length - 1];
+    set({ cut: prev, past: past.slice(0, -1), future: [cut, ...future], ...fixups(prev, frame, activeLayerId) });
   },
 
   redo: () => {
-    const { cut, past, future } = get();
+    const { cut, past, future, frame, activeLayerId } = get();
     if (!future.length) return;
-    set({ cut: future[0], past: [...past, cut], future: future.slice(1) });
-    get().setFrame(get().frame);
-    ensureActiveLayer();
+    const next = future[0];
+    set({ cut: next, past: [...past, cut], future: future.slice(1), ...fixups(next, frame, activeLayerId) });
   },
 
   replaceCut: (cut) => {
-    set({ cut, past: [], future: [], frame: 0, playing: false });
-    ensureActiveLayer();
+    // Freeze once up front so Immer never has to walk the whole loaded cut during an edit.
+    const frozen = freeze(cut, true);
+    set({ cut: frozen, past: [], future: [], playing: false, ...fixups(frozen, 0, get().activeLayerId) });
   },
 
   setFrame: (frame) => {
@@ -97,10 +108,3 @@ export const useEditor = create<EditorState>((set, get) => ({
   toggleOnion: () => set((s) => ({ onion: !s.onion })),
   setPlaying: (playing) => set({ playing }),
 }));
-
-function ensureActiveLayer() {
-  const { cut, activeLayerId } = useEditor.getState();
-  if (!cut.layers.some((l) => l.id === activeLayerId)) {
-    useEditor.setState({ activeLayerId: cut.layers[cut.layers.length - 1].id });
-  }
-}

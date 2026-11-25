@@ -37,6 +37,21 @@ Work is autosaved in the browser. Use **Save** / **Open…** to keep `.pyrin.jso
 | `+` / `-` | Insert / delete frame |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 
+## Rendering and performance
+
+- **Three stacked canvases:** under (paper, onion skin, lower layers), active layer, over (upper layers). While drawing, only the active canvas repaints: one cached bitmap plus the live stroke. It uses a low-latency (`desynchronized`) context and shows the pen's predicted points.
+- **Drawing bitmaps:** each drawing is rasterised once and cached (LRU, 64 bitmaps). Adding a stroke paints only that stroke onto the existing bitmap. After a cut loads, outlines and bitmaps are prepared during idle time.
+- **Input:** coalesced pen events are thinned to points at least 1.5 px apart, which cuts outline cost about 10× with no visible change.
+- **Autosave:** IndexedDB, one record per drawing, written during idle time. Only drawings that changed are saved.
+
+Measured on a heavy cut (3 layers × 24 drawings × 60 strokes, 4,320 strokes):
+
+| | Before | After |
+|---|---|---|
+| Repaint per pen move | 15–24 ms | ~1.3 ms |
+| Changing frame (median) | 15–24 ms | ~6.7 ms |
+| Autosave after a stroke (blocks page) | ~290 ms | ~9 ms |
+
 ## Layout
 
 | Folder | Purpose |

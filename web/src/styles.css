@@ -77,12 +77,19 @@ input[type="number"] {
   padding: 16px;
   overflow: hidden;
 }
-.stage canvas {
-  /* Display size is set from Stage.tsx so the cut always fits. */
+/* Display size is set from Stage.tsx so the cut always fits. */
+.paper {
+  position: relative;
   background: #fff;
   box-shadow: 0 4px 24px rgb(0 0 0 / 0.4);
   touch-action: none;
   cursor: crosshair;
+}
+.paper canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* Timesheet */

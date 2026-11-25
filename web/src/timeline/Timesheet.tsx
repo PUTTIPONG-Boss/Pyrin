@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { getLayer, moveLayer, removeLayer, setLength } from "../model/cut";
 import { useEditor } from "../model/store";
 import type { Layer } from "../model/types";
@@ -10,7 +11,7 @@ export function Timesheet() {
   const setFrame = useEditor((s) => s.setFrame);
   const edit = useEditor((s) => s.edit);
 
-  const frames = Array.from({ length: cut.length }, (_, i) => i);
+  const frames = useMemo(() => Array.from({ length: cut.length }, (_, i) => i), [cut.length]);
   // Top layer first, like a layer panel.
   const rows = [...cut.layers].reverse();
 
@@ -77,7 +78,18 @@ export function Timesheet() {
   );
 }
 
-function LayerRow({ layer, frames, frame, active }: { layer: Layer; frames: number[]; frame: number; active: boolean }) {
+// Rows only re-render when their own layer, the playhead or selection changes.
+const LayerRow = memo(function LayerRow({
+  layer,
+  frames,
+  frame,
+  active,
+}: {
+  layer: Layer;
+  frames: number[];
+  frame: number;
+  active: boolean;
+}) {
   const edit = useEditor((s) => s.edit);
   const setFrame = useEditor((s) => s.setFrame);
   const setActiveLayer = useEditor((s) => s.setActiveLayer);
@@ -153,4 +165,4 @@ function LayerRow({ layer, frames, frame, active }: { layer: Layer; frames: numb
       </div>
     </>
   );
-}
+});
