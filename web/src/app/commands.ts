@@ -1,12 +1,13 @@
 // Every action that has a shortcut. Buttons, tooltips, the shortcut sheet and the keyboard
 // handler all read from this list, so a key is defined in exactly one place.
-import { drawingStarts, getLayer, moveLayer } from "../model/cut";
+import { addMarks, drawingAt, drawingStarts, getLayer, moveLayer, removeMarks } from "../model/cut";
 import { downloadCut } from "../model/io";
-import { useEditor } from "../model/store";
+import { DEFAULT_VIEW, useEditor, type Tool } from "../model/store";
+import { isFill, type Mark } from "../model/types";
 import { actions } from "../timeline/actions";
 import { displayKeys } from "./keys";
 
-export type CommandGroup = "Tools" | "Playback" | "Timesheet" | "Layers" | "Edit" | "File";
+export type CommandGroup = "Tools" | "View" | "Playback" | "Timesheet" | "Layers" | "Edit" | "File";
 
 export interface Command {
   id: string;
@@ -46,22 +47,125 @@ function jumpToDrawing(dir: -1 | 1) {
 let openFile: () => void = () => {};
 export const setOpenFileHandler = (fn: () => void) => (openFile = fn);
 
+/** The drawing on the active cell and the selected strokes that still exist in it. */
+function activeSelection() {
+  const s = state();
+  const layer = activeLayer();
+  const drawing = layer ? drawingAt(layer, s.frame) : null;
+  if (!drawing || s.selection?.drawingId !== drawing.id) return null;
+  const indices = s.selection.indices.filter((i) => i < drawing.strokes.length);
+  return indices.length ? { drawing, indices } : null;
+}
+
+/** Copied marks. In-memory only: copying between frames and layers is the main use. */
+let clipboard: Mark[] = [];
+
+function copy() {
+  const sel = activeSelection();
+  const layer = activeLayer();
+  const drawing = layer ? drawingAt(layer, state().frame) : null;
+  clipboard = sel ? sel.indices.map((i) => sel.drawing.strokes[i]) : drawing ? [...drawing.strokes] : [];
+}
+
+/** Deletes the selection, or clears the cell when nothing is selected. */
+function deleteSelectionOrCell() {
+  const sel = activeSelection();
+  if (!sel) return actions.clear();
+  const s = state();
+  s.edit((c) => {
+    const drawing = c.layers.find((l) => l.id === s.activeLayerId)?.drawings[sel.drawing.id];
+    if (drawing) removeMarks(drawing, sel.indices);
+  });
+  s.setSelection(null);
+}
+
+function paste() {
+  if (!clipboard.length) return;
+  const s = state();
+  let placed: ReturnType<typeof addMarks> | null = null;
+  s.edit((c) => {
+    const layer = getLayer(c, s.activeLayerId);
+    if (layer) placed = addMarks(layer, s.frame, clipboard);
+  });
+  const result = placed as ReturnType<typeof addMarks> | null;
+  if (!result) return;
+  // Select what was pasted so it can be moved into place straight away.
+  s.setTool("select");
+  s.setSelection({ drawingId: result.drawingId, indices: result.indices });
+}
+
+function selectAll() {
+  const layer = activeLayer();
+  const drawing = layer ? drawingAt(layer, state().frame) : null;
+  if (!drawing) return;
+  const indices = drawing.strokes.flatMap((m, i) => (!isFill(m) && m.mode === "erase" ? [] : [i]));
+  state().setTool("select");
+  state().setSelection(indices.length ? { drawingId: drawing.id, indices } : null);
+}
+
+const ZOOM_STEPS = [0.1, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8];
+function zoomStep(dir: 1 | -1) {
+  const { view, setView } = state();
+  const next =
+    dir > 0 ? ZOOM_STEPS.find((z) => z > view.zoom + 1e-6) : ZOOM_STEPS.findLast((z) => z < view.zoom - 1e-6);
+  if (next === undefined) return;
+  // Zoom around the middle of the stage: scale the pan with the zoom.
+  const k = next / view.zoom;
+  setView({ zoom: next, panX: view.panX * k, panY: view.panY * k });
+}
+
+const setTool = (tool: Tool) => () => state().setTool(tool);
+
 export const commands: Command[] = [
   // Tools
-  { id: "tool.brush", label: "Brush", group: "Tools", keys: ["B"], run: () => state().setTool("brush") },
-  { id: "tool.eraser", label: "Eraser", group: "Tools", keys: ["E"], run: () => state().setTool("eraser") },
+  { id: "tool.brush", label: "Brush", group: "Tools", keys: ["B"], run: setTool("brush") },
+  { id: "tool.eraser", label: "Eraser", group: "Tools", keys: ["E"], run: setTool("eraser") },
   {
     id: "tool.swap",
     label: "Switch brush / eraser",
     group: "Tools",
     keys: ["X"],
-    run: () => state().setTool(state().tool === "brush" ? "eraser" : "brush"),
+    run: () => state().setTool(state().tool === "eraser" ? "brush" : "eraser"),
   },
+  { id: "tool.line", label: "Line (Shift: snap angle)", group: "Tools", keys: ["L"], run: setTool("line") },
+  { id: "tool.rect", label: "Rectangle (Shift: square)", group: "Tools", keys: ["R"], run: setTool("rect") },
+  { id: "tool.ellipse", label: "Ellipse (Shift: circle)", group: "Tools", keys: ["U"], run: setTool("ellipse") },
+  { id: "tool.fill", label: "Fill bucket", group: "Tools", keys: ["G"], run: setTool("fill") },
+  { id: "tool.eyedropper", label: "Eyedropper (or Alt-click)", group: "Tools", keys: ["I"], run: setTool("eyedropper") },
+  { id: "tool.select", label: "Lasso select / transform", group: "Tools", keys: ["S"], run: setTool("select") },
+  { id: "tool.hand", label: "Hand (or hold Space)", group: "Tools", keys: [], run: setTool("hand") },
   { id: "size.down", label: "Smaller brush", group: "Tools", keys: ["["], run: () => state().setSize(state().size - 1) },
   { id: "size.up", label: "Bigger brush", group: "Tools", keys: ["]"], run: () => state().setSize(state().size + 1) },
   { id: "view.onion", label: "Onion skin", group: "Tools", keys: ["O"], run: () => state().toggleOnion() },
 
+  // View
+  { id: "view.zoomIn", label: "Zoom in (or Ctrl + wheel)", group: "View", keys: ["Ctrl+="], run: () => zoomStep(1) },
+  { id: "view.zoomOut", label: "Zoom out", group: "View", keys: ["Ctrl+-"], run: () => zoomStep(-1) },
+  { id: "view.reset", label: "Reset view", group: "View", keys: ["0"], run: () => state().setView(DEFAULT_VIEW) },
+  {
+    id: "view.rotateLeft",
+    label: "Rotate view left",
+    group: "View",
+    keys: ["Shift+,"],
+    run: () => state().setView({ rotation: state().view.rotation - 15 }),
+  },
+  {
+    id: "view.rotateRight",
+    label: "Rotate view right",
+    group: "View",
+    keys: ["Shift+."],
+    run: () => state().setView({ rotation: state().view.rotation + 15 }),
+  },
+  {
+    id: "view.flip",
+    label: "Flip view horizontally",
+    group: "View",
+    keys: ["Shift+H"],
+    run: () => state().setView({ flip: !state().view.flip }),
+  },
+
   // Playback
+  // Space plays on release, so holding Space can pan instead (see useShortcuts).
   { id: "play", label: "Play / pause", group: "Playback", keys: ["Space"], run: () => state().setPlaying(!state().playing) },
   { id: "frame.prev", label: "Previous frame", group: "Playback", keys: ["Left", ","], run: () => state().stepFrame(-1) },
   { id: "frame.next", label: "Next frame", group: "Playback", keys: ["Right", "."], run: () => state().stepFrame(1) },
@@ -73,7 +177,13 @@ export const commands: Command[] = [
   // Timesheet
   { id: "cell.new", label: "New drawing on this frame", group: "Timesheet", keys: ["N"], run: actions.newDrawing },
   { id: "cell.hold", label: "Hold previous drawing", group: "Timesheet", keys: ["H"], run: actions.hold },
-  { id: "cell.clear", label: "Clear cell", group: "Timesheet", keys: ["Delete", "Backspace"], run: actions.clear },
+  {
+    id: "cell.clear",
+    label: "Delete selection / clear cell",
+    group: "Timesheet",
+    keys: ["Delete", "Backspace"],
+    run: deleteSelectionOrCell,
+  },
   { id: "frame.insert", label: "Insert frame", group: "Timesheet", keys: ["=", "Shift+=", "Num+"], run: actions.insertFrame },
   { id: "frame.delete", label: "Delete frame", group: "Timesheet", keys: ["-", "Num-"], run: actions.deleteFrame },
   { id: "retime.1", label: "Shoot layer on 1s", group: "Timesheet", keys: ["1"], run: () => actions.retime(1) },
@@ -113,6 +223,20 @@ export const commands: Command[] = [
   // Edit
   { id: "undo", label: "Undo", group: "Edit", keys: ["Ctrl+Z"], run: () => state().undo() },
   { id: "redo", label: "Redo", group: "Edit", keys: ["Ctrl+Shift+Z", "Ctrl+Y"], run: () => state().redo() },
+  { id: "edit.copy", label: "Copy selection (or whole drawing)", group: "Edit", keys: ["Ctrl+C"], run: copy },
+  {
+    id: "edit.cut",
+    label: "Cut selection (or whole drawing)",
+    group: "Edit",
+    keys: ["Ctrl+X"],
+    run: () => {
+      copy();
+      deleteSelectionOrCell();
+    },
+  },
+  { id: "edit.paste", label: "Paste", group: "Edit", keys: ["Ctrl+V"], run: paste },
+  { id: "select.all", label: "Select all", group: "Edit", keys: ["Ctrl+A"], run: selectAll },
+  { id: "select.none", label: "Deselect", group: "Edit", keys: ["Escape", "Ctrl+D"], run: () => state().setSelection(null) },
 
   // File
   { id: "file.save", label: "Save", group: "File", keys: ["Ctrl+S"], run: () => downloadCut(state().cut) },
@@ -146,9 +270,10 @@ export function subscribeHelp(fn: () => void) {
  */
 export function tip(id: string, label?: string) {
   const command = byId.get(id);
+  const combo = command?.keys[0];
   return {
     "data-tip": label ?? command?.label ?? id,
-    "data-keys": command ? displayKeys(command.keys[0]).join(" ") : undefined,
-    "aria-keyshortcuts": command?.keys[0],
+    "data-keys": combo ? displayKeys(combo).join(" ") : undefined,
+    "aria-keyshortcuts": combo,
   };
 }

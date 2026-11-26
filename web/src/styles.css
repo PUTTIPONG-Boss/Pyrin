@@ -70,20 +70,26 @@ input[type="number"] {
 .group.right { margin-left: auto; }
 
 /* Stage */
+.workspace {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 0;
+}
 .stage {
   min-height: 0;
   display: grid;
   place-items: center;
   padding: 16px;
   overflow: hidden;
+  touch-action: none;
 }
 /* Display size is set from Stage.tsx so the cut always fits. */
 .paper {
   position: relative;
   background: #fff;
   box-shadow: 0 4px 24px rgb(0 0 0 / 0.4);
-  touch-action: none;
-  cursor: crosshair;
+  /* View transforms (zoom, rotate, flip) are applied around the paper's centre. */
+  transform-origin: center;
 }
 .paper canvas {
   position: absolute;
@@ -273,3 +279,46 @@ kbd {
 .sheet-row .combo { display: inline-flex; align-items: center; gap: 3px; }
 .sheet-row .or { margin: 0 4px; color: var(--muted); font-size: 11px; }
 .sheet footer { margin-top: 12px; font-size: 12px; }
+
+/* Tool rail */
+.tool-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+.tool-rail .tool {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+}
+.tool-rail .tool:hover { background: var(--panel-2); }
+.tool-rail .tool.on { background: var(--accent); border-color: var(--accent); }
+.swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  margin-top: 8px;
+  border: 2px solid var(--text);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+.swatch input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Tool options and view controls */
+.options .value { min-width: 22px; text-align: right; }
+.hint { font-size: 12px; }
+.segmented { display: inline-flex; }
+.segmented button { border-radius: 0; margin-left: -1px; }
+.segmented button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.segmented button:last-child { border-radius: 0 4px 4px 0; }
+.icon-btn { display: grid; place-items: center; padding: 4px 6px; }
+.zoom-level { min-width: 54px; font-variant-numeric: tabular-nums; }

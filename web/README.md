@@ -22,6 +22,20 @@ npm run build      # type-check and production build
 
 Work is autosaved in the browser. Use **Save** / **Open…** to keep `.pyrin.json` project files.
 
+## Tools
+
+| Tool | Key | Notes |
+|---|---|---|
+| Brush | `B` | Presets: Pencil, Ink pen, Marker. **Stabilizer** smooths shaky lines. |
+| Eraser | `E` | Erases only the active layer. `X` switches brush ↔ eraser. |
+| Line / Rectangle / Ellipse | `L` / `R` / `U` | Even-width lines. Hold `Shift` to snap angles to 15° or draw squares / circles. |
+| Fill bucket | `G` | **Close gaps** (0–10 px) stops colour leaking through small gaps in line art. Fill under the lines of this layer, or use lines from all visible layers (colour on its own layer). Colour always sits under line art. |
+| Eyedropper | `I` | Or `Alt`-click with any painting tool. |
+| Lasso select | `S` | Lasso lines and fills. Drag inside to move, corners to scale, the circle to rotate. `Shift` constrains. `Delete` removes. `Ctrl+C` / `Ctrl+X` / `Ctrl+V` copy between frames and layers; with nothing selected they copy the whole drawing. |
+| Hand | hold `Space` | Or middle mouse / the wheel. `Ctrl` + wheel zooms. |
+
+**View:** zoom (`Ctrl` `+` / `-`), rotate the paper like a light table (`Shift` `,` / `.`), flip to check a drawing (`Shift+H`), reset (`0`). The view never changes the drawing.
+
 ## Shortcuts
 
 Press `?` in the editor for the full list. Hovering a button shows its shortcut.
@@ -29,9 +43,15 @@ Press `?` in the editor for the full list. Hovering a button shows its shortcut.
 | Key | Action |
 |---|---|
 | `B` / `E` / `X` | Brush / eraser / switch between them |
+| `L` / `R` / `U` | Line / rectangle / ellipse |
+| `G` / `I` / `S` | Fill / eyedropper / lasso select |
 | `[` / `]` | Brush size |
 | `O` | Toggle onion skin |
-| `Space` | Play / pause |
+| `Space` | Tap: play / pause. Hold and drag: pan |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste |
+| `Ctrl+A` / `Esc` | Select all / deselect |
+| `Ctrl+=` / `Ctrl+-` / `0` | Zoom in / out / reset view |
+| `Shift+,` / `Shift+.` / `Shift+H` | Rotate view left / right, flip view |
 | `←` / `→` (or `,` / `.`) | Previous / next frame |
 | `Shift+←` / `Shift+→` | Previous / next drawing |
 | `Home` / `End` | First / last frame |

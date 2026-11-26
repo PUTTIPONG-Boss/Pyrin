@@ -6,6 +6,7 @@ import { Timesheet } from "../timeline/Timesheet";
 import { usePlayback } from "../timeline/usePlayback";
 import { ShortcutSheet } from "./ShortcutSheet";
 import { Toolbar } from "./Toolbar";
+import { ToolRail } from "./ToolRail";
 import { TooltipLayer } from "./Tooltip";
 import { useShortcuts } from "./useShortcuts";
 
@@ -35,7 +36,10 @@ export function App() {
   return (
     <div className="app">
       <Toolbar />
-      <Stage />
+      <div className="workspace">
+        <ToolRail />
+        <Stage />
+      </div>
       <Timesheet />
       <TooltipLayer />
       <ShortcutSheet />

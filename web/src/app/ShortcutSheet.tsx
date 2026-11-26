@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { commands, isHelpOpen, subscribeHelp, toggleHelp, type CommandGroup } from "./commands";
 import { displayKeys } from "./keys";
 
-const GROUPS: CommandGroup[] = ["Tools", "Playback", "Timesheet", "Layers", "Edit", "File"];
+const GROUPS: CommandGroup[] = ["Tools", "View", "Playback", "Timesheet", "Layers", "Edit", "File"];
 
 export function ShortcutSheet() {
   const open = useSyncExternalStore(subscribeHelp, isHelpOpen);

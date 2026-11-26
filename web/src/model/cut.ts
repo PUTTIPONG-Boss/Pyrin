@@ -1,6 +1,7 @@
 // Pure operations on a Cut. Functions that change data mutate their argument,
 // so call them inside an Immer recipe (see store.ts).
-import type { Cut, Drawing, DrawingId, Layer, Stroke } from "./types";
+import { transformMark, type Matrix } from "./geometry";
+import type { Cut, Drawing, DrawingId, Layer, Mark } from "./types";
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -50,10 +51,34 @@ export function newDrawingAt(layer: Layer, frame: number, kind: Drawing["kind"] 
   return drawing.id;
 }
 
-/** Adds a stroke to the drawing on `frame`, creating one if the cell is empty. */
-export function addStroke(layer: Layer, frame: number, stroke: Stroke): void {
+/** Adds a stroke or fill to the drawing on `frame`, creating one if the cell is empty. */
+export function addStroke(layer: Layer, frame: number, stroke: Mark): void {
+  addMarks(layer, frame, [stroke]);
+}
+
+/**
+ * Appends marks to the drawing on `frame` (creating one if the cell is empty) and returns
+ * where they landed, so a paste can select what it added.
+ */
+export function addMarks(layer: Layer, frame: number, marks: Mark[]): { drawingId: DrawingId; indices: number[] } {
   const id = layer.exposure[frame] ?? newDrawingAt(layer, frame);
-  layer.drawings[id].strokes.push(stroke);
+  const strokes = layer.drawings[id].strokes;
+  const start = strokes.length;
+  strokes.push(...marks);
+  return { drawingId: id, indices: marks.map((_, i) => start + i) };
+}
+
+export function removeMarks(drawing: Drawing, indices: number[]): void {
+  const drop = new Set(indices);
+  drawing.strokes = drawing.strokes.filter((_, i) => !drop.has(i));
+}
+
+/** Applies an affine transform to the selected strokes and fills. */
+export function transformMarks(drawing: Drawing, indices: number[], m: Matrix): void {
+  for (const i of indices) {
+    const mark = drawing.strokes[i];
+    if (mark) drawing.strokes[i] = transformMark(mark, m);
+  }
 }
 
 /** Exposes the previous frame's drawing on `frame` (extends a hold). */

@@ -1,6 +1,7 @@
 import { getStroke } from "perfect-freehand";
 import { drawingAt, getLayer, neighbourDrawings } from "../model/cut";
-import type { Cut, Drawing, Stroke } from "../model/types";
+import type { Matrix } from "../model/geometry";
+import { isFill, type Cut, type Drawing, type Fill, type Mark, type Stroke } from "../model/types";
 
 const ONION_BEFORE = { color: "#e0464e", alphas: [0.35, 0.15] };
 const ONION_AFTER = { color: "#2f9e5b", alphas: [0.35, 0.15] };
@@ -16,9 +17,9 @@ export function strokePath(stroke: Stroke, complete = true): Path2D {
   if (cached && cached.count === stroke.points.length && cached.complete === complete) return cached.path;
   const outline = getStroke(stroke.points, {
     size: stroke.size,
-    thinning: 0.6,
+    thinning: stroke.thinning ?? 0.6,
     smoothing: 0.5,
-    streamline: 0.4,
+    streamline: stroke.streamline ?? 0.4,
     simulatePressure: stroke.simulatePressure,
     last: complete,
   });
@@ -36,12 +37,93 @@ export function strokePath(stroke: Stroke, complete = true): Path2D {
   return path;
 }
 
-function paintStrokes(ctx: CanvasRenderingContext2D, strokes: readonly Stroke[], complete = true) {
-  for (const stroke of strokes) {
-    ctx.globalCompositeOperation = stroke.mode === "erase" ? "destination-out" : "source-over";
-    ctx.fillStyle = stroke.color;
-    ctx.fill(strokePath(stroke, complete));
+/**
+ * Even-width, unsmoothed strokes (shape tools) are drawn as a plain canvas line with round
+ * joins. Perfect-freehand's outline folds over itself at sharp corners, which leaves a small
+ * unpainted notch inside each corner that the fill tool cannot reach.
+ */
+const isPlainLine = (s: Stroke) => s.thinning === 0 && s.streamline === 0;
+
+const lineCache = new WeakMap<Stroke, Path2D>();
+
+function linePath(stroke: Stroke): Path2D {
+  let path = lineCache.get(stroke);
+  if (!path) {
+    path = linePathUncached(stroke);
+    lineCache.set(stroke, path);
   }
+  return path;
+}
+
+function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, complete: boolean) {
+  if (!isPlainLine(stroke)) {
+    ctx.fill(strokePath(stroke, complete));
+    return;
+  }
+  ctx.strokeStyle = stroke.color;
+  ctx.lineWidth = stroke.size;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  // The live shape is rebuilt on every move, so only cache finished ones.
+  ctx.stroke(complete ? linePath(stroke) : linePathUncached(stroke));
+}
+
+function linePathUncached(stroke: Stroke): Path2D {
+  const path = new Path2D();
+  stroke.points.forEach(([x, y], i) => (i ? path.lineTo(x, y) : path.moveTo(x, y)));
+  return path;
+}
+
+const fillCache = new WeakMap<Fill, Path2D>();
+
+export function fillPath(fill: Fill): Path2D {
+  let path = fillCache.get(fill);
+  if (!path) {
+    path = new Path2D();
+    const s = fill.spans;
+    for (let i = 0; i < s.length; i += 3) path.rect(s[i + 1], s[i], s[i + 2] - s[i + 1] + 1, 1);
+    fillCache.set(fill, path);
+  }
+  return path;
+}
+
+/**
+ * Paints marks in order, with all fills first so colour sits under line art. `transforms`
+ * moves individual marks (by index) for a live transform preview.
+ */
+function paintMarks(
+  ctx: CanvasRenderingContext2D,
+  marks: readonly Mark[],
+  complete = true,
+  transforms?: Map<number, Matrix>,
+) {
+  marks.forEach((mark, i) => {
+    if (!isFill(mark)) return;
+    ctx.fillStyle = mark.color;
+    const m = transforms?.get(i);
+    if (m) {
+      ctx.save();
+      ctx.transform(...m);
+      ctx.fill(fillPath(mark));
+      ctx.restore();
+    } else {
+      ctx.fill(fillPath(mark));
+    }
+  });
+  marks.forEach((mark, i) => {
+    if (isFill(mark)) return;
+    ctx.globalCompositeOperation = mark.mode === "erase" ? "destination-out" : "source-over";
+    ctx.fillStyle = mark.color;
+    const m = transforms?.get(i);
+    if (m) {
+      ctx.save();
+      ctx.transform(...m);
+      paintStroke(ctx, mark, complete);
+      ctx.restore();
+    } else {
+      paintStroke(ctx, mark, complete);
+    }
+  });
   ctx.globalCompositeOperation = "source-over";
 }
 
@@ -55,8 +137,8 @@ function makeCanvas(width: number, height: number) {
 /**
  * Rasterises each drawing once and keeps the bitmap. Drawings are immutable (Immer), so a
  * drawing object always has the same pixels. When a stroke is added, the new drawing's
- * strokes start with the old drawing's strokes, so the old bitmap is reused and only the
- * new strokes are painted.
+ * marks start with the old drawing's marks, so the old bitmap is reused and only the new
+ * strokes are painted. A new fill goes under everything, so it repaints the drawing.
  */
 class DrawingCache {
   private bitmaps = new Map<Drawing, HTMLCanvasElement>(); // oldest first, for LRU eviction
@@ -79,24 +161,21 @@ class DrawingCache {
     let canvas: HTMLCanvasElement;
     const prev = this.latestById.get(drawing.id);
     const prevCanvas = prev && this.bitmaps.get(prev);
-    if (prev && prevCanvas && isPrefix(prev.strokes, drawing.strokes)) {
+    const added = prev && isPrefix(prev.strokes, drawing.strokes) ? drawing.strokes.slice(prev.strokes.length) : null;
+    if (prev && prevCanvas && added && !added.some(isFill)) {
       // Take over the previous bitmap and paint only what was added.
       this.bitmaps.delete(prev);
       canvas = prevCanvas;
-      paintStrokes(canvas.getContext("2d")!, drawing.strokes.slice(prev.strokes.length));
+      paintMarks(canvas.getContext("2d")!, added);
     } else {
       canvas = makeCanvas(this.width, this.height);
-      paintStrokes(canvas.getContext("2d")!, drawing.strokes);
+      paintMarks(canvas.getContext("2d")!, drawing.strokes);
     }
 
     this.bitmaps.set(drawing, canvas);
     this.latestById.set(drawing.id, drawing);
     this.evict();
     return canvas;
-  }
-
-  get size() {
-    return this.bitmaps.size;
   }
 
   get capacity() {
@@ -116,7 +195,7 @@ class DrawingCache {
   }
 }
 
-function isPrefix(a: readonly Stroke[], b: readonly Stroke[]) {
+function isPrefix(a: readonly Mark[], b: readonly Mark[]) {
   if (a.length > b.length) return false;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;
@@ -191,7 +270,10 @@ export class StageRenderer {
       while (i < drawings.length && deadline.timeRemaining() > 2) {
         const d = drawings[i];
         if (s < d.strokes.length) {
-          strokePath(d.strokes[s++]);
+          const mark = d.strokes[s++];
+          if (isFill(mark)) fillPath(mark);
+          else if (isPlainLine(mark)) linePath(mark);
+          else strokePath(mark);
           continue;
         }
         if (i < bitmapBudget) cache.get(d);
@@ -246,7 +328,46 @@ export class StageRenderer {
     const ctx = this.activeCtx;
     ctx.clearRect(0, 0, this.active.width, this.active.height);
     if (this.activeBitmap) ctx.drawImage(this.activeBitmap, 0, 0);
-    if (stroke) paintStrokes(ctx, [stroke], false);
+    if (stroke) paintMarks(ctx, [stroke], false);
+  }
+
+  /** Repaints the active layer with some of its strokes moved, for the select tool. */
+  drawTransformed(drawing: Drawing, indices: readonly number[], m: Matrix) {
+    const ctx = this.activeCtx;
+    ctx.clearRect(0, 0, this.active.width, this.active.height);
+    paintMarks(ctx, drawing.strokes, true, new Map(indices.map((i) => [i, m])));
+  }
+
+  /**
+   * The colour at a cut pixel, as #rrggbb (paper and all visible layers, no onion skin).
+   * Reads from a 1×1 copy: reading the on-screen canvases would make the browser move them
+   * off the GPU and slow drawing down.
+   */
+  sampleColor(cut: Cut, frame: number, x: number, y: number): string {
+    const cache = this.ensureCache(cut);
+    const probe = makeCanvas(1, 1);
+    const ctx = probe.getContext("2d", { willReadFrequently: true })!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 1, 1);
+    for (const layer of cut.layers) {
+      const d = layer.visible ? drawingAt(layer, frame) : null;
+      if (d) ctx.drawImage(cache.get(d), Math.floor(x), Math.floor(y), 1, 1, 0, 0, 1, 1);
+    }
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  /** Pixels the fill tool looks at: every visible layer, or just the active one. */
+  fillSource(cut: Cut, frame: number, layerIds: readonly string[]): ImageData {
+    const cache = this.ensureCache(cut);
+    const canvas = makeCanvas(cut.width, cut.height);
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+    for (const layer of cut.layers) {
+      if (!layer.visible || !layerIds.includes(layer.id)) continue;
+      const d = drawingAt(layer, frame);
+      if (d) ctx.drawImage(cache.get(d), 0, 0);
+    }
+    return ctx.getImageData(0, 0, cut.width, cut.height);
   }
 
   private drawTinted(ctx: CanvasRenderingContext2D, drawing: Drawing, color: string, alpha: number) {

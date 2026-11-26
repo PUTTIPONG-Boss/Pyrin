@@ -10,7 +10,27 @@ export interface Stroke {
   mode: "draw" | "erase";
   /** True when the input device reports no pressure (mouse). */
   simulatePressure: boolean;
+  /** How much pressure changes the width (0 = even line). Defaults to 0.6. */
+  thinning?: number;
+  /** Stabilizer: how much the line lags behind the pen to smooth it. Defaults to 0.4. */
+  streamline?: number;
 }
+
+/**
+ * A paint-bucket fill: a flat colour over a pixel region, stored as horizontal runs
+ * [y, x0, x1, y, x0, x1, ...] (x1 inclusive). Fills are painted under a drawing's strokes,
+ * like colour under line art.
+ */
+export interface Fill {
+  type: "fill";
+  color: string;
+  spans: number[];
+}
+
+/** Anything a drawing is made of, in the order it was added. */
+export type Mark = Stroke | Fill;
+
+export const isFill = (m: Mark): m is Fill => (m as Fill).type === "fill";
 
 /** A single drawing, like one sheet of paper. */
 export interface Drawing {
@@ -18,7 +38,7 @@ export interface Drawing {
   /** Sheet name as written on a timesheet, e.g. "A3". */
   name: string;
   kind: "key" | "breakdown" | "inbetween";
-  strokes: Stroke[];
+  strokes: Mark[];
   /** Bitmap produced by a model, if any. */
   raster?: string;
 }

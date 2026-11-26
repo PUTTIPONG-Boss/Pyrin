@@ -1,4 +1,6 @@
+import { FlipHorizontal2, RotateCcw, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { ToolOptions } from "./ToolOptions";
 import { createCut } from "../model/cut";
 import { parseCut } from "../model/io";
 import { useEditor } from "../model/store";
@@ -22,20 +24,7 @@ export function Toolbar() {
     <header className="toolbar">
       <strong className="brand">Pyrin</strong>
 
-      <div className="group">
-        <button className={s.tool === "brush" ? "on" : ""} onClick={() => runCommand("tool.brush")} {...tip("tool.brush")}>
-          Brush
-        </button>
-        <button className={s.tool === "eraser" ? "on" : ""} onClick={() => runCommand("tool.eraser")} {...tip("tool.eraser")}>
-          Eraser
-        </button>
-        <label className="label" data-tip="Brush size" data-keys="[ ]">
-          Size
-          <input type="range" min={1} max={40} value={s.size} onChange={(e) => s.setSize(Number(e.target.value))} />
-          <span className="muted">{s.size}</span>
-        </label>
-        <input type="color" value={s.color} onChange={(e) => s.setColor(e.target.value)} data-tip="Colour" />
-      </div>
+      <ToolOptions />
 
       <div className="group">
         <button className={s.onion ? "on" : ""} onClick={() => runCommand("view.onion")} {...tip("view.onion")}>
@@ -55,6 +44,31 @@ export function Toolbar() {
           {s.playing ? "Pause" : "Play"}
         </button>
         <button onClick={() => runCommand("frame.next")} {...tip("frame.next")}>▶</button>
+      </div>
+
+      <div className="group view-controls">
+        <button className="icon-btn" onClick={() => runCommand("view.zoomOut")} {...tip("view.zoomOut")}>
+          <ZoomOut size={16} />
+        </button>
+        <button className="zoom-level" onClick={() => runCommand("view.reset")} {...tip("view.reset")}>
+          {Math.round(s.view.zoom * 100)}%
+        </button>
+        <button className="icon-btn" onClick={() => runCommand("view.zoomIn")} {...tip("view.zoomIn")}>
+          <ZoomIn size={16} />
+        </button>
+        <button className="icon-btn" onClick={() => runCommand("view.rotateLeft")} {...tip("view.rotateLeft")}>
+          <RotateCcw size={16} />
+        </button>
+        <button className="icon-btn" onClick={() => runCommand("view.rotateRight")} {...tip("view.rotateRight")}>
+          <RotateCw size={16} />
+        </button>
+        <button
+          className={`icon-btn${s.view.flip ? " on" : ""}`}
+          onClick={() => runCommand("view.flip")}
+          {...tip("view.flip")}
+        >
+          <FlipHorizontal2 size={16} />
+        </button>
       </div>
 
       <div className="group right">
